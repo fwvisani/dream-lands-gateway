@@ -50,7 +50,7 @@ export const Navbar = () => {
           {/* Navigation */}
           {user && (
             <div className="hidden md:flex items-center gap-8">
-              <a href="#feed" className="text-sm font-medium hover:text-primary transition-smooth">
+              <a href="/feed" className="text-sm font-medium hover:text-primary transition-smooth">
                 Feed
               </a>
               <a href="#planner" className="text-sm font-medium hover:text-primary transition-smooth">
