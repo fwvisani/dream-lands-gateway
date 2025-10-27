@@ -1,19 +1,24 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel, Edit3, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DayTimeline } from "@/components/planner/DayTimeline";
 import { TripMap } from "@/components/planner/TripMap";
+import { TripEditor } from "@/components/planner/TripEditor";
+import { ShareTripDialog } from "@/components/planner/ShareTripDialog";
 import { useToast } from "@/hooks/use-toast";
 
 const TripDetails = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showEditor, setShowEditor] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   const { data: trip, isLoading, refetch } = useQuery({
     queryKey: ["trip", tripId],
@@ -147,7 +152,40 @@ const TripDetails = () => {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{trip.title}</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-4xl font-bold">{trip.title}</h1>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowEditor(!showEditor)}
+                className="gap-2"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit Trip
+              </Button>
+              <Button 
+                variant="default"
+                onClick={() => setShowShareDialog(true)}
+                className="gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                Share to Feed
+              </Button>
+            </div>
+          </div>
+
+          {/* Share Dialog */}
+          <ShareTripDialog
+            open={showShareDialog}
+            onOpenChange={setShowShareDialog}
+            trip={trip}
+            onShared={() => {
+              toast({
+                title: "Success!",
+                description: "Your trip has been shared to your feed."
+              });
+            }}
+          />
           
           <div className="flex flex-wrap gap-6 text-muted-foreground">
             {mainDestination && (
@@ -185,7 +223,7 @@ const TripDetails = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+            <div className={`${showEditor ? "lg:col-span-2" : "lg:col-span-2"} space-y-6`}>
               {trip.trip_days && trip.trip_days.length > 0 ? (
                 trip.trip_days.map((day: any) => (
                   <DayTimeline key={day.id} day={day} />
@@ -198,10 +236,26 @@ const TripDetails = () => {
             </div>
             
             <div className="lg:col-span-1 space-y-6">
+              {/* Editor */}
+              {showEditor && (
+                <TripEditor 
+                  tripId={trip.id} 
+                  onEditComplete={() => {
+                    refetch();
+                    toast({
+                      title: "Refreshing...",
+                      description: "Loading your updated itinerary"
+                    });
+                  }}
+                />
+              )}
+
               {/* Map */}
-              <div className="sticky top-24">
-                <TripMap markers={mapMarkers} />
-              </div>
+              {!showEditor && (
+                <div className="sticky top-24">
+                  <TripMap markers={mapMarkers} />
+                </div>
+              )}
 
               {/* Hotels */}
               {trip.trip_hotels && trip.trip_hotels.length > 0 && (

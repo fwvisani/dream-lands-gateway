@@ -211,6 +211,23 @@ Return ONLY valid JSON array of days:
       }
     }
 
+    // Calculate logistics for each day
+    console.log("Calculating logistics and travel times...");
+    for (const savedDay of trip.trip_days || []) {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/calculate-logistics`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ tripId, dayId: savedDay.id })
+        });
+      } catch (error) {
+        console.error(`Failed to calculate logistics for day ${savedDay.day_number}:`, error);
+      }
+    }
+
     // Update trip status to active
     await supabase
       .from("trips")
