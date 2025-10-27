@@ -5,9 +5,11 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel, Edit3, Share2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel, Edit3, Share2, Smartphone, Monitor } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DayTimeline } from "@/components/planner/DayTimeline";
+import { MobileDayTimeline } from "@/components/planner/MobileDayTimeline";
+import { DayMapView } from "@/components/planner/DayMapView";
 import { TripMap } from "@/components/planner/TripMap";
 import { TripEditor } from "@/components/planner/TripEditor";
 import { ShareTripDialog } from "@/components/planner/ShareTripDialog";
@@ -19,6 +21,8 @@ const TripDetails = () => {
   const { toast } = useToast();
   const [showEditor, setShowEditor] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [mobileView, setMobileView] = useState(false);
+  const [selectedDayForMap, setSelectedDayForMap] = useState<any>(null);
 
   const { data: trip, isLoading, refetch } = useQuery({
     queryKey: ["trip", tripId],
@@ -155,6 +159,26 @@ const TripDetails = () => {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold">{trip.title}</h1>
             <div className="flex gap-2">
+              {/* View Toggle */}
+              <div className="hidden md:flex border rounded-lg">
+                <Button 
+                  variant={mobileView ? "ghost" : "secondary"}
+                  size="sm"
+                  onClick={() => setMobileView(false)}
+                  className="rounded-r-none"
+                >
+                  <Monitor className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant={mobileView ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setMobileView(true)}
+                  className="rounded-l-none"
+                >
+                  <Smartphone className="w-4 h-4" />
+                </Button>
+              </div>
+              
               <Button 
                 variant="outline" 
                 onClick={() => setShowEditor(!showEditor)}
@@ -225,9 +249,21 @@ const TripDetails = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className={`${showEditor ? "lg:col-span-2" : "lg:col-span-2"} space-y-6`}>
               {trip.trip_days && trip.trip_days.length > 0 ? (
-                trip.trip_days.map((day: any) => (
-                  <DayTimeline key={day.id} day={day} />
-                ))
+                mobileView ? (
+                  // Mobile Timeline View
+                  trip.trip_days.map((day: any) => (
+                    <MobileDayTimeline 
+                      key={day.id} 
+                      day={day}
+                      onViewMap={() => setSelectedDayForMap(day)}
+                    />
+                  ))
+                ) : (
+                  // Desktop Timeline View
+                  trip.trip_days.map((day: any) => (
+                    <DayTimeline key={day.id} day={day} />
+                  ))
+                )
               ) : (
                 <Card className="p-8 text-center text-muted-foreground">
                   No itinerary details available yet
@@ -251,7 +287,7 @@ const TripDetails = () => {
               )}
 
               {/* Map */}
-              {!showEditor && (
+              {!showEditor && !mobileView && (
                 <div className="sticky top-24">
                   <TripMap markers={mapMarkers} />
                 </div>
@@ -295,6 +331,15 @@ const TripDetails = () => {
               )}
             </div>
           </div>
+        )}
+
+        {/* Day Map Dialog */}
+        {selectedDayForMap && (
+          <DayMapView
+            open={!!selectedDayForMap}
+            onOpenChange={(open) => !open && setSelectedDayForMap(null)}
+            day={selectedDayForMap}
+          />
         )}
       </div>
     </div>

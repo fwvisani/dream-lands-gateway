@@ -94,8 +94,38 @@ serve(async (req) => {
       });
     }
 
-    // STEP 4: Use GPT to plan daily itinerary
-    console.log("Planning daily itinerary...");
+    // STEP 4: Use GPT to plan daily itinerary with duration estimation
+    console.log("Planning daily itinerary with duration estimates...");
+    
+    // Get duration estimates for activities
+    const activityDurations: any = {};
+    for (const activity of activities.slice(0, 10)) {
+      try {
+        const durationResponse = await fetch(`${supabaseUrl}/functions/v1/estimate-duration`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            placeId: activity.place_id,
+            placeName: activity.name,
+            placeType: activity.types?.[0] || "tourist_attraction",
+            pace: intent.pace || "moderate",
+            interests: intent.interests || [],
+            date: intent.start_date,
+            websiteUrl: null
+          })
+        });
+        const durationData = await durationResponse.json();
+        activityDurations[activity.name] = durationData.duration_min;
+      } catch (error) {
+        console.error(`Failed to estimate duration for ${activity.name}:`, error);
+        // Use default estimates
+        activityDurations[activity.name] = [120, 180];
+      }
+    }
+
     const planningResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -115,7 +145,8 @@ Trip details:
 - Interests: ${intent.interests?.join(", ") || "general tourism"}
 - Pace: ${intent.pace || "moderate"}
 
-Available activities: ${activities.map((a: any) => a.name).join(", ")}
+Available activities (with estimated durations): 
+${activities.map((a: any) => `${a.name} (${activityDurations[a.name]?.[0] || 120}-${activityDurations[a.name]?.[1] || 180} min)`).join(", ")}
 Available restaurants: ${restaurants.map((r: any) => r.name).join(", ")}
 
 Create a balanced daily schedule with:

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.calculate-logistics]
 verify_jwt = false
+
+[functions.estimate-duration]
+verify_jwt = false
