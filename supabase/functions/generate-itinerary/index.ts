@@ -25,6 +25,10 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Initialize source tracking
+    const sources = { maps_calls: 0, gpt_calls: 0, matrix_calls: 0 };
+    const debug = { cache_hits: 0, version: 1 };
+
     // Fetch trip and intent
     const { data: trip, error: tripError } = await supabase
       .from("trips")
@@ -49,6 +53,7 @@ serve(async (req) => {
 
     // STEP 1: Find Activities using Google Places API
     console.log("Finding activities...");
+    sources.maps_calls++;
     const activitiesResponse = await fetch(
       `https://maps.googleapis.com/maps/api/place/textsearch/json?query=tourist+attractions+in+${encodeURIComponent(mainDest.city)}&key=${mapsKey}`
     );
@@ -57,6 +62,7 @@ serve(async (req) => {
 
     // STEP 2: Find Restaurants
     console.log("Finding restaurants...");
+    sources.maps_calls++;
     const restaurantsResponse = await fetch(
       `https://maps.googleapis.com/maps/api/place/textsearch/json?query=best+restaurants+in+${encodeURIComponent(mainDest.city)}&key=${mapsKey}`
     );
@@ -65,6 +71,7 @@ serve(async (req) => {
 
     // STEP 3: Find Hotels
     console.log("Finding hotels...");
+    sources.maps_calls++;
     const hotelsResponse = await fetch(
       `https://maps.googleapis.com/maps/api/place/textsearch/json?query=hotels+in+${encodeURIComponent(mainDest.city)}&key=${mapsKey}`
     );
@@ -73,6 +80,7 @@ serve(async (req) => {
 
     // Get detailed info for hotels and save to DB
     for (const hotel of hotels) {
+      sources.maps_calls++;
       const detailsResponse = await fetch(
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${hotel.place_id}&fields=name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website&key=${mapsKey}`
       );
@@ -101,6 +109,7 @@ serve(async (req) => {
     const activityDurations: any = {};
     for (const activity of activities.slice(0, 10)) {
       try {
+        sources.gpt_calls++;
         const durationResponse = await fetch(`${supabaseUrl}/functions/v1/estimate-duration`, {
           method: "POST",
           headers: {
@@ -119,6 +128,9 @@ serve(async (req) => {
         });
         const durationData = await durationResponse.json();
         activityDurations[activity.name] = durationData.duration_min;
+        if (durationData.source === "cache") {
+          debug.cache_hits++;
+        }
       } catch (error) {
         console.error(`Failed to estimate duration for ${activity.name}:`, error);
         // Use default estimates
@@ -216,19 +228,32 @@ Return ONLY valid JSON array of days:
         continue;
       }
 
-      // Save timeline items
+      // Save timeline items and alternatives
       for (let i = 0; i < day.timeline.length; i++) {
         const item = day.timeline[i];
         
         // Find matching place from our fetched data
         let placeId = item.place_id;
+        let allAlternatives: any[] = [];
+        
         if (!placeId) {
           const allPlaces = [...activities, ...restaurants];
           const match = allPlaces.find(p => p.name === item.place_name);
           placeId = match?.place_id;
+          
+          // Get alternatives for activities
+          if (item.kind === "activity") {
+            allAlternatives = activities
+              .filter((a: any) => a.place_id !== placeId)
+              .slice(0, 3);
+          } else if (item.kind === "meal") {
+            allAlternatives = restaurants
+              .filter((r: any) => r.place_id !== placeId)
+              .slice(0, 3);
+          }
         }
 
-        await supabase.from("trip_timeline_items").insert({
+        const { data: savedItem } = await supabase.from("trip_timeline_items").insert({
           day_id: savedDay.id,
           slot: item.slot,
           kind: item.kind,
@@ -238,14 +263,40 @@ Return ONLY valid JSON array of days:
           duration_source: "gpt_estimate",
           meal_type: item.meal_type,
           order_index: i
-        });
+        })
+        .select()
+        .single();
+
+        // Save alternatives
+        if (savedItem && allAlternatives.length > 0) {
+          for (let j = 0; j < allAlternatives.length; j++) {
+            const alt = allAlternatives[j];
+            await supabase.from("trip_alternatives").insert({
+              timeline_item_id: savedItem.id,
+              place_id: alt.place_id,
+              place_name: alt.name,
+              order_index: j,
+              place_data: {
+                rating: alt.rating,
+                user_ratings_total: alt.user_ratings_total,
+                formatted_address: alt.formatted_address
+              }
+            });
+          }
+        }
       }
     }
 
     // Calculate logistics for each day
     console.log("Calculating logistics and travel times...");
-    for (const savedDay of trip.trip_days || []) {
+    const { data: savedDays } = await supabase
+      .from("trip_days")
+      .select("*")
+      .eq("trip_id", tripId);
+      
+    for (const savedDay of savedDays || []) {
       try {
+        sources.matrix_calls++;
         await fetch(`${supabaseUrl}/functions/v1/calculate-logistics`, {
           method: "POST",
           headers: {
@@ -259,10 +310,33 @@ Return ONLY valid JSON array of days:
       }
     }
 
-    // Update trip status to active
+    // Validate itinerary
+    console.log("Validating itinerary...");
+    let notices: string[] = [];
+    try {
+      const validationResponse = await fetch(`${supabaseUrl}/functions/v1/validate-itinerary`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tripId })
+      });
+      const validation = await validationResponse.json();
+      notices = validation.notices || [];
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
+
+    // Update trip status to active with sources and notices
     await supabase
       .from("trips")
-      .update({ status: "active" })
+      .update({ 
+        status: "active",
+        sources,
+        debug,
+        notices
+      })
       .eq("id", tripId);
 
     console.log("Itinerary generated successfully!");

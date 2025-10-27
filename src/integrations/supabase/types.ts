@@ -24,6 +24,7 @@ export type Database = {
           filters: Json | null
           id: string
           place_ids: string[] | null
+          updated_at: string | null
           version: number
         }
         Insert: {
@@ -35,6 +36,7 @@ export type Database = {
           filters?: Json | null
           id?: string
           place_ids?: string[] | null
+          updated_at?: string | null
           version?: number
         }
         Update: {
@@ -46,6 +48,7 @@ export type Database = {
           filters?: Json | null
           id?: string
           place_ids?: string[] | null
+          updated_at?: string | null
           version?: number
         }
         Relationships: []
@@ -92,12 +95,49 @@ export type Database = {
         }
         Relationships: []
       }
+      cache_itinerary_assembly: {
+        Row: {
+          assembly_data: Json
+          cache_key: string
+          city: string
+          created_at: string
+          expires_at: string
+          id: string
+          profile_key: string
+          season: string
+          version: number
+        }
+        Insert: {
+          assembly_data: Json
+          cache_key: string
+          city: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          profile_key: string
+          season: string
+          version?: number
+        }
+        Update: {
+          assembly_data?: Json
+          cache_key?: string
+          city?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          profile_key?: string
+          season?: string
+          version?: number
+        }
+        Relationships: []
+      }
       cache_place_details: {
         Row: {
           created_at: string
           data: Json
           expires_at: string
           place_id: string
+          sources: Json | null
           updated_at: string
           version: number
         }
@@ -106,6 +146,7 @@ export type Database = {
           data: Json
           expires_at: string
           place_id: string
+          sources?: Json | null
           updated_at?: string
           version?: number
         }
@@ -114,6 +155,7 @@ export type Database = {
           data?: Json
           expires_at?: string
           place_id?: string
+          sources?: Json | null
           updated_at?: string
           version?: number
         }
@@ -824,10 +866,13 @@ export type Database = {
       trips: {
         Row: {
           created_at: string
+          debug: Json | null
           generated_at: string
           id: string
           locale: string
+          notices: string[] | null
           run_id: string
+          sources: Json | null
           status: string
           title: string
           updated_at: string
@@ -836,10 +881,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          debug?: Json | null
           generated_at?: string
           id?: string
           locale?: string
+          notices?: string[] | null
           run_id: string
+          sources?: Json | null
           status?: string
           title: string
           updated_at?: string
@@ -848,15 +896,45 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          debug?: Json | null
           generated_at?: string
           id?: string
           locale?: string
+          notices?: string[] | null
           run_id?: string
+          sources?: Json | null
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
           visibility?: string
+        }
+        Relationships: []
+      }
+      user_trip_limits: {
+        Row: {
+          created_at: string
+          pack_expires_at: string | null
+          pack_tier: string
+          trips_created: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pack_expires_at?: string | null
+          pack_tier?: string
+          trips_created?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pack_expires_at?: string | null
+          pack_tier?: string
+          trips_created?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

@@ -21,6 +21,7 @@ interface DayTimelineProps {
     summary: string;
     trip_timeline_items?: TimelineItem[];
   };
+  isPublic?: boolean;
 }
 
 const slotIcons = {

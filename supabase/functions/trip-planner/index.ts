@@ -32,6 +32,22 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Check user limits
+    const { data: userLimits } = await supabase
+      .from("user_trip_limits")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const { count: tripsCount } = await supabase
+      .from("trips")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    const currentTier = userLimits?.pack_tier || "free";
+    const maxTrips = currentTier === "free" ? 5 : 999;
+    const currentTrips = tripsCount || 0;
 
     // Extract intent from conversation
     const lastUserMessage = messages[messages.length - 1]?.content || "";
@@ -116,9 +132,35 @@ Respond in JSON format:
       );
     }
 
+    // Check if user has reached limit
+    if (currentTrips >= maxTrips) {
+      return new Response(
+        JSON.stringify({
+          message: `Você atingiu o limite de ${maxTrips} viagens do plano ${currentTier}. Faça upgrade para criar mais viagens!`,
+          needsUpgrade: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check trip duration limit for free tier
+    const extracted = gptResponse.extracted_data;
+    const daysDiff = Math.ceil(
+      (new Date(extracted.end_date).getTime() - new Date(extracted.start_date).getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+    
+    if (currentTier === "free" && daysDiff > 15) {
+      return new Response(
+        JSON.stringify({
+          message: `Viagens gratuitas são limitadas a 15 dias. Sua viagem tem ${daysDiff} dias. Faça upgrade para planejar viagens mais longas!`,
+          needsUpgrade: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Create trip in database
     const runId = crypto.randomUUID();
-    const extracted = gptResponse.extracted_data;
     
     // Generate title from destination
     const mainDest = extracted.destinations[0];
