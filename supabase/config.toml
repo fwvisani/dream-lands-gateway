@@ -1,1 +1,4 @@
 project_id = "suhnrxcjukzsyddqqbxj"
+
+[functions.trip-planner]
+verify_jwt = false

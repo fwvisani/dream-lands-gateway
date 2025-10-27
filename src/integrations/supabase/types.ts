@@ -14,6 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
+      cache_city_catalog: {
+        Row: {
+          category: string
+          city: string
+          country: string
+          created_at: string
+          expires_at: string
+          filters: Json | null
+          id: string
+          place_ids: string[] | null
+          version: number
+        }
+        Insert: {
+          category: string
+          city: string
+          country: string
+          created_at?: string
+          expires_at: string
+          filters?: Json | null
+          id?: string
+          place_ids?: string[] | null
+          version?: number
+        }
+        Update: {
+          category?: string
+          city?: string
+          country?: string
+          created_at?: string
+          expires_at?: string
+          filters?: Json | null
+          id?: string
+          place_ids?: string[] | null
+          version?: number
+        }
+        Relationships: []
+      }
+      cache_duration_estimates: {
+        Row: {
+          assumptions: string[] | null
+          confidence: number | null
+          created_at: string
+          duration_min: number[] | null
+          expires_at: string
+          id: string
+          place_id: string
+          profile_key: string
+          risks: string[] | null
+          season: string | null
+          version: number
+        }
+        Insert: {
+          assumptions?: string[] | null
+          confidence?: number | null
+          created_at?: string
+          duration_min?: number[] | null
+          expires_at: string
+          id?: string
+          place_id: string
+          profile_key: string
+          risks?: string[] | null
+          season?: string | null
+          version?: number
+        }
+        Update: {
+          assumptions?: string[] | null
+          confidence?: number | null
+          created_at?: string
+          duration_min?: number[] | null
+          expires_at?: string
+          id?: string
+          place_id?: string
+          profile_key?: string
+          risks?: string[] | null
+          season?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      cache_place_details: {
+        Row: {
+          created_at: string
+          data: Json
+          expires_at: string
+          place_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          expires_at: string
+          place_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          expires_at?: string
+          place_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      cache_routes: {
+        Row: {
+          created_at: string
+          destination_place_id: string
+          eta_min: number | null
+          expires_at: string
+          id: string
+          mode: string
+          origin_place_id: string
+          polyline: string | null
+          time_bucket: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          destination_place_id: string
+          eta_min?: number | null
+          expires_at: string
+          id?: string
+          mode: string
+          origin_place_id: string
+          polyline?: string | null
+          time_bucket: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          destination_place_id?: string
+          eta_min?: number | null
+          expires_at?: string
+          id?: string
+          mode?: string
+          origin_place_id?: string
+          polyline?: string | null
+          time_bucket?: string
+          version?: number
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string
@@ -367,6 +511,354 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trip_alternatives: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number
+          place_data: Json | null
+          place_id: string
+          place_name: string
+          timeline_item_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index: number
+          place_data?: Json | null
+          place_id: string
+          place_name: string
+          timeline_item_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          place_data?: Json | null
+          place_id?: string
+          place_name?: string
+          timeline_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_alternatives_timeline_item_id_fkey"
+            columns: ["timeline_item_id"]
+            isOneToOne: false
+            referencedRelation: "trip_timeline_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_days: {
+        Row: {
+          city: string
+          created_at: string
+          date: string
+          day_number: number
+          id: string
+          summary: string | null
+          trip_id: string
+          tzid: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          date: string
+          day_number: number
+          id?: string
+          summary?: string | null
+          trip_id: string
+          tzid: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          date?: string
+          day_number?: number
+          id?: string
+          summary?: string | null
+          trip_id?: string
+          tzid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_days_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_hotels: {
+        Row: {
+          created_at: string
+          distance_to_day_centroid: Json | null
+          formatted_address: string | null
+          geo: Json | null
+          id: string
+          is_selected: boolean | null
+          name: string
+          phone: string | null
+          photos: Json | null
+          place_id: string
+          price_level: number | null
+          rating: number | null
+          reason: string | null
+          score: number | null
+          trip_id: string
+          user_ratings_total: number | null
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          distance_to_day_centroid?: Json | null
+          formatted_address?: string | null
+          geo?: Json | null
+          id?: string
+          is_selected?: boolean | null
+          name: string
+          phone?: string | null
+          photos?: Json | null
+          place_id: string
+          price_level?: number | null
+          rating?: number | null
+          reason?: string | null
+          score?: number | null
+          trip_id: string
+          user_ratings_total?: number | null
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          distance_to_day_centroid?: Json | null
+          formatted_address?: string | null
+          geo?: Json | null
+          id?: string
+          is_selected?: boolean | null
+          name?: string
+          phone?: string | null
+          photos?: Json | null
+          place_id?: string
+          price_level?: number | null
+          rating?: number | null
+          reason?: string | null
+          score?: number | null
+          trip_id?: string
+          user_ratings_total?: number | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_hotels_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_intents: {
+        Row: {
+          accessibility_needs: string[] | null
+          budget_band: string | null
+          created_at: string
+          destinations: Json
+          dietary_restrictions: string[] | null
+          end_date: string
+          id: string
+          interests: string[] | null
+          pace: string | null
+          start_date: string
+          travelers: number
+          trip_id: string
+          wake_time: string | null
+        }
+        Insert: {
+          accessibility_needs?: string[] | null
+          budget_band?: string | null
+          created_at?: string
+          destinations: Json
+          dietary_restrictions?: string[] | null
+          end_date: string
+          id?: string
+          interests?: string[] | null
+          pace?: string | null
+          start_date: string
+          travelers?: number
+          trip_id: string
+          wake_time?: string | null
+        }
+        Update: {
+          accessibility_needs?: string[] | null
+          budget_band?: string | null
+          created_at?: string
+          destinations?: Json
+          dietary_restrictions?: string[] | null
+          end_date?: string
+          id?: string
+          interests?: string[] | null
+          pace?: string | null
+          start_date?: string
+          travelers?: number
+          trip_id?: string
+          wake_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_intents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: true
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_timeline_items: {
+        Row: {
+          assumptions: string[] | null
+          confidence: number | null
+          created_at: string
+          day_id: string
+          duration_source: string | null
+          estimated_duration_min: number[] | null
+          evidence_snippets: string[] | null
+          id: string
+          kind: string
+          meal_type: string | null
+          order_index: number
+          place_data: Json | null
+          place_id: string | null
+          place_name: string | null
+          risks: string[] | null
+          slot: string
+        }
+        Insert: {
+          assumptions?: string[] | null
+          confidence?: number | null
+          created_at?: string
+          day_id: string
+          duration_source?: string | null
+          estimated_duration_min?: number[] | null
+          evidence_snippets?: string[] | null
+          id?: string
+          kind: string
+          meal_type?: string | null
+          order_index: number
+          place_data?: Json | null
+          place_id?: string | null
+          place_name?: string | null
+          risks?: string[] | null
+          slot: string
+        }
+        Update: {
+          assumptions?: string[] | null
+          confidence?: number | null
+          created_at?: string
+          day_id?: string
+          duration_source?: string | null
+          estimated_duration_min?: number[] | null
+          evidence_snippets?: string[] | null
+          id?: string
+          kind?: string
+          meal_type?: string | null
+          order_index?: number
+          place_data?: Json | null
+          place_id?: string | null
+          place_name?: string | null
+          risks?: string[] | null
+          slot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_timeline_items_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_transfers: {
+        Row: {
+          created_at: string
+          day_id: string
+          eta_min: number | null
+          from_place_id: string
+          id: string
+          mode: string
+          polyline: string | null
+          to_place_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          eta_min?: number | null
+          from_place_id: string
+          id?: string
+          mode: string
+          polyline?: string | null
+          to_place_id: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          eta_min?: number | null
+          from_place_id?: string
+          id?: string
+          mode?: string
+          polyline?: string | null
+          to_place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_transfers_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          created_at: string
+          generated_at: string
+          id: string
+          locale: string
+          run_id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          locale?: string
+          run_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          locale?: string
+          run_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
       }
     }
     Views: {

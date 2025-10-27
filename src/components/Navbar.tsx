@@ -53,7 +53,7 @@ export const Navbar = () => {
               <a href="/feed" className="text-sm font-medium hover:text-primary transition-smooth">
                 Feed
               </a>
-              <a href="#planner" className="text-sm font-medium hover:text-primary transition-smooth">
+              <a href="/planner" className="text-sm font-medium hover:text-primary transition-smooth">
                 Planner
               </a>
               <a href="#explore" className="text-sm font-medium hover:text-primary transition-smooth">
