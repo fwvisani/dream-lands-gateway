@@ -120,7 +120,24 @@ Respond in JSON format:
     }
 
     const intentData = await intentResponse.json();
-    const gptResponse = JSON.parse(intentData.choices[0].message.content);
+    console.log("OpenAI raw response:", JSON.stringify(intentData, null, 2));
+    
+    const messageContent = intentData.choices?.[0]?.message?.content;
+    if (!messageContent) {
+      console.error("No message content in OpenAI response");
+      throw new Error("Invalid response from OpenAI");
+    }
+    
+    console.log("Message content to parse:", messageContent);
+    
+    let gptResponse;
+    try {
+      gptResponse = JSON.parse(messageContent);
+    } catch (parseError) {
+      console.error("Failed to parse GPT response:", parseError);
+      console.error("Content was:", messageContent);
+      throw new Error("Failed to parse AI response");
+    }
 
     console.log("GPT Response:", gptResponse);
 
