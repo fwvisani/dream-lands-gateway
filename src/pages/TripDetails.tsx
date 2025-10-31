@@ -5,7 +5,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel, Edit3, Share2, Smartphone, Monitor } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, Loader2, Hotel, Edit3, Share2, Smartphone, Monitor, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DayTimeline } from "@/components/planner/DayTimeline";
 import { MobileDayTimeline } from "@/components/planner/MobileDayTimeline";
@@ -13,6 +13,7 @@ import { DayMapView } from "@/components/planner/DayMapView";
 import { TripMap } from "@/components/planner/TripMap";
 import { TripEditor } from "@/components/planner/TripEditor";
 import { ShareTripDialog } from "@/components/planner/ShareTripDialog";
+import { GridPlanner } from "@/components/planner/GridPlanner";
 import { useToast } from "@/hooks/use-toast";
 
 const TripDetails = () => {
@@ -22,6 +23,7 @@ const TripDetails = () => {
   const [showEditor, setShowEditor] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [mobileView, setMobileView] = useState(false);
+  const [gridView, setGridView] = useState(false);
   const [selectedDayForMap, setSelectedDayForMap] = useState<any>(null);
 
   const { data: trip, isLoading, refetch } = useQuery({
@@ -159,25 +161,51 @@ const TripDetails = () => {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold">{trip.title}</h1>
             <div className="flex gap-2">
-              {/* View Toggle */}
-              <div className="hidden md:flex border rounded-lg">
+              {/* Layout Toggle */}
+              <div className="flex border rounded-lg">
                 <Button 
-                  variant={mobileView ? "ghost" : "secondary"}
+                  variant={!gridView ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setMobileView(false)}
+                  onClick={() => setGridView(false)}
                   className="rounded-r-none"
+                  title="Timeline View"
                 >
-                  <Monitor className="w-4 h-4" />
+                  <List className="w-4 h-4" />
                 </Button>
                 <Button 
-                  variant={mobileView ? "secondary" : "ghost"}
+                  variant={gridView ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setMobileView(true)}
+                  onClick={() => setGridView(true)}
                   className="rounded-l-none"
+                  title="Grid View"
                 >
-                  <Smartphone className="w-4 h-4" />
+                  <LayoutGrid className="w-4 h-4" />
                 </Button>
               </div>
+
+              {/* Mobile/Desktop Toggle (only in timeline view) */}
+              {!gridView && (
+                <div className="hidden md:flex border rounded-lg">
+                  <Button 
+                    variant={mobileView ? "ghost" : "secondary"}
+                    size="sm"
+                    onClick={() => setMobileView(false)}
+                    className="rounded-r-none"
+                    title="Desktop Timeline"
+                  >
+                    <Monitor className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant={mobileView ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => setMobileView(true)}
+                    className="rounded-l-none"
+                    title="Mobile Timeline"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
               
               <Button 
                 variant="outline" 
@@ -245,7 +273,11 @@ const TripDetails = () => {
               Our AI is working on creating the perfect itinerary for you. This usually takes 1-2 minutes.
             </p>
           </Card>
+        ) : gridView ? (
+          // Grid View
+          <GridPlanner trip={trip} />
         ) : (
+          // Timeline View
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className={`${showEditor ? "lg:col-span-2" : "lg:col-span-2"} space-y-6`}>
               {trip.trip_days && trip.trip_days.length > 0 ? (
