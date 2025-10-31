@@ -6,6 +6,159 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function to calculate day centroids and score hotels
+async function scoreAndRankHotels(
+  supabase: any,
+  tripId: string,
+  hotels: any[],
+  days: any[],
+  budgetBand: string,
+  mapsKey: string,
+  sources: any
+) {
+  // Calculate centroid for each day based on activities
+  const dayCentroids: any = {};
+  
+  for (const day of days) {
+    const { data: items } = await supabase
+      .from("trip_timeline_items")
+      .select("place_id, place_data")
+      .eq("day_id", day.id)
+      .eq("kind", "activity");
+
+    if (!items || items.length === 0) continue;
+
+    // Calculate average lat/lng of all activities for this day
+    let sumLat = 0;
+    let sumLng = 0;
+    let count = 0;
+
+    for (const item of items) {
+      // First try to get coords from place_data
+      const placeData = item.place_data as any;
+      if (placeData?.geo?.lat && placeData?.geo?.lng) {
+        sumLat += placeData.geo.lat;
+        sumLng += placeData.geo.lng;
+        count++;
+      } else if (item.place_id) {
+        // Fallback: fetch from Google Places if not in place_data
+        try {
+          sources.maps_calls++;
+          const detailsResponse = await fetch(
+            `https://maps.googleapis.com/maps/api/place/details/json?place_id=${item.place_id}&fields=geometry&key=${mapsKey}`
+          );
+          const detailsData = await detailsResponse.json();
+          const geo = detailsData.result?.geometry?.location;
+          if (geo?.lat && geo?.lng) {
+            sumLat += geo.lat;
+            sumLng += geo.lng;
+            count++;
+          }
+        } catch (error) {
+          console.error(`Failed to get location for ${item.place_id}:`, error);
+        }
+      }
+    }
+
+    if (count > 0) {
+      dayCentroids[`day${day.day_number}`] = {
+        lat: sumLat / count,
+        lng: sumLng / count
+      };
+    }
+  }
+
+  // Calculate distance from each hotel to each day's centroid
+  for (const hotel of hotels) {
+    if (!hotel.geo?.lat || !hotel.geo?.lng) continue;
+
+    const distanceToCentroid: any = {};
+    
+    for (const [dayKey, centroid] of Object.entries(dayCentroids)) {
+      sources.matrix_calls++;
+      try {
+        const matrixResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${hotel.geo.lat},${hotel.geo.lng}&destinations=${(centroid as any).lat},${(centroid as any).lng}&mode=driving&key=${mapsKey}`
+        );
+        const matrixData = await matrixResponse.json();
+        
+        if (matrixData.rows?.[0]?.elements?.[0]?.duration?.value) {
+          distanceToCentroid[dayKey] = Math.round(matrixData.rows[0].elements[0].duration.value / 60);
+        }
+      } catch (error) {
+        console.error(`Failed to calculate distance for hotel ${hotel.name}:`, error);
+      }
+    }
+
+    // Calculate composite score
+    // Score factors:
+    // 1. Average distance to centroids (lower is better) - weight: 0.4
+    // 2. Price alignment with budget - weight: 0.3
+    // 3. Rating - weight: 0.3
+
+    const distances = Object.values(distanceToCentroid) as number[];
+    const avgDistance = distances.length > 0
+      ? distances.reduce((a, b) => a + b, 0) / distances.length
+      : 30; // default 30 min if no distance calculated
+
+    // Normalize distance score (0-1, where 1 is best)
+    const distanceScore = Math.max(0, 1 - (avgDistance / 60)); // 60 min = 0 score
+
+    // Price alignment score
+    const budgetToPriceMap: any = {
+      low: 1,
+      medium: 2,
+      high: 3,
+      luxury: 4
+    };
+    const targetPrice = budgetToPriceMap[budgetBand] || 2;
+    const hotelPrice = hotel.price_level || 2;
+    const priceScore = Math.max(0, 1 - Math.abs(targetPrice - hotelPrice) / 3);
+
+    // Rating score (normalized 0-1)
+    const ratingScore = (hotel.rating || 3) / 5;
+
+    // Composite score
+    const score = (distanceScore * 0.4) + (priceScore * 0.3) + (ratingScore * 0.3);
+
+    // Generate reasoning
+    const reasons = [];
+    if (avgDistance < 15) reasons.push("Very close to planned activities");
+    else if (avgDistance < 25) reasons.push("Good proximity to activities");
+    
+    if (Math.abs(targetPrice - hotelPrice) === 0) reasons.push("Perfect match for your budget");
+    else if (Math.abs(targetPrice - hotelPrice) === 1) reasons.push("Within budget range");
+    
+    if (hotel.rating >= 4.5) reasons.push("Excellent guest ratings");
+    else if (hotel.rating >= 4.0) reasons.push("Great guest reviews");
+
+    const reason = reasons.length > 0 ? reasons.join("; ") : "Good option for your trip";
+
+    // Update hotel with score and distances
+    await supabase
+      .from("trip_hotels")
+      .update({
+        score,
+        reason,
+        distance_to_day_centroid: distanceToCentroid
+      })
+      .eq("id", hotel.id);
+
+    hotel.score = score; // Update local copy for ranking
+  }
+
+  // Select the best hotel (highest score)
+  const rankedHotels = hotels.sort((a, b) => (b.score || 0) - (a.score || 0));
+  if (rankedHotels.length > 0 && rankedHotels[0].id) {
+    await supabase
+      .from("trip_hotels")
+      .update({ is_selected: true })
+      .eq("id", rankedHotels[0].id);
+    
+    console.log(`Selected best hotel: ${rankedHotels[0].name} with score ${rankedHotels[0].score}`);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -78,16 +231,23 @@ serve(async (req) => {
     const hotelsData = await hotelsResponse.json();
     const hotels = hotelsData.results?.slice(0, 5) || [];
 
-    // Get detailed info for hotels and save to DB
+    // Get detailed info for hotels and save to DB (initially without scoring)
+    const hotelDetails = [];
     for (const hotel of hotels) {
       sources.maps_calls++;
       const detailsResponse = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${hotel.place_id}&fields=name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website&key=${mapsKey}`
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${hotel.place_id}&fields=name,formatted_address,geometry,rating,user_ratings_total,price_level,formatted_phone_number,website,photos&key=${mapsKey}`
       );
       const detailsData = await detailsResponse.json();
       const details = detailsData.result;
 
-      await supabase.from("trip_hotels").insert({
+      // Extract photo URLs
+      const photos = details.photos?.slice(0, 3).map((photo: any) => ({
+        url: `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${mapsKey}`,
+        attributions: photo.html_attributions?.[0] || "Google"
+      })) || [];
+
+      const { data: savedHotel } = await supabase.from("trip_hotels").insert({
         trip_id: tripId,
         place_id: hotel.place_id,
         name: details.name,
@@ -98,7 +258,13 @@ serve(async (req) => {
         price_level: details.price_level,
         phone: details.formatted_phone_number,
         website: details.website,
-        is_selected: hotels.indexOf(hotel) === 0 // Select first hotel
+        photos,
+        is_selected: false // Will be set after scoring
+      }).select().single();
+
+      hotelDetails.push({
+        ...savedHotel,
+        geo: details.geometry?.location
       });
     }
 
@@ -234,12 +400,19 @@ Return ONLY valid JSON array of days:
         
         // Find matching place from our fetched data
         let placeId = item.place_id;
+        let placeData: any = null;
         let allAlternatives: any[] = [];
         
         if (!placeId) {
           const allPlaces = [...activities, ...restaurants];
           const match = allPlaces.find(p => p.name === item.place_name);
           placeId = match?.place_id;
+          placeData = match ? {
+            rating: match.rating,
+            user_ratings_total: match.user_ratings_total,
+            formatted_address: match.formatted_address,
+            geo: match.geometry?.location
+          } : null;
           
           // Get alternatives for activities
           if (item.kind === "activity") {
@@ -259,6 +432,7 @@ Return ONLY valid JSON array of days:
           kind: item.kind,
           place_id: placeId,
           place_name: item.place_name,
+          place_data: placeData,
           estimated_duration_min: item.estimated_duration_min,
           duration_source: "gpt_estimate",
           meal_type: item.meal_type,
@@ -308,6 +482,12 @@ Return ONLY valid JSON array of days:
       } catch (error) {
         console.error(`Failed to calculate logistics for day ${savedDay.day_number}:`, error);
       }
+    }
+
+    // STEP 6: Score and rank hotels
+    console.log("Scoring hotels based on proximity to activities...");
+    if (hotelDetails.length > 0 && savedDays && savedDays.length > 0) {
+      await scoreAndRankHotels(supabase, tripId, hotelDetails, savedDays, intent.budget_band, mapsKey, sources);
     }
 
     // Validate itinerary
