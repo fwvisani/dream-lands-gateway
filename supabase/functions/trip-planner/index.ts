@@ -64,6 +64,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "gpt-5-2025-08-07",
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
@@ -109,7 +110,7 @@ Respond in JSON format:
             content: lastUserMessage
           }
         ],
-        max_completion_tokens: 1000
+        max_completion_tokens: 2000
       }),
     });
 
