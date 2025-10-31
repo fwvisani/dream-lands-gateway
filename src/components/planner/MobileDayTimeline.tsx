@@ -148,7 +148,7 @@ export const MobileDayTimeline = ({ day, onViewMap }: MobileDayTimelineProps) =>
                           </div>
 
                           {item.place_data?.rating && (
-                            <div className="flex items-center gap-1 text-xs">
+                            <div className="flex items-center gap-1 text-xs mb-2">
                               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                               <span className="font-medium">{item.place_data.rating}</span>
                               {item.place_data.user_ratings_total && (
@@ -157,6 +157,22 @@ export const MobileDayTimeline = ({ day, onViewMap }: MobileDayTimelineProps) =>
                                 </span>
                               )}
                             </div>
+                          )}
+
+                          {item.place_data?.micro_copy && (
+                            <p className="text-xs font-medium text-primary mb-1">
+                              {item.place_data.micro_copy}
+                            </p>
+                          )}
+                          {item.place_data?.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
+                              {item.place_data.description}
+                            </p>
+                          )}
+                          {item.place_data?.tip && (
+                            <p className="text-xs text-muted-foreground italic bg-muted/50 p-1.5 rounded mt-1">
+                              💡 {item.place_data.tip}
+                            </p>
                           )}
                         </div>
                       </div>

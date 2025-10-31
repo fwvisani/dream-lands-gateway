@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.validate-itinerary]
 verify_jwt = false
+
+[functions.present-itinerary]
+verify_jwt = false

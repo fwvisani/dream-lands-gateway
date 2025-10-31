@@ -508,6 +508,23 @@ Return ONLY valid JSON array of days:
       console.error("Validation failed:", error);
     }
 
+    // Enhance presentation with micro-copy
+    console.log("Enhancing presentation...");
+    try {
+      const presenterResponse = await fetch(`${supabaseUrl}/functions/v1/present-itinerary`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tripId })
+      });
+      await presenterResponse.json();
+      console.log("Presentation enhanced");
+    } catch (error) {
+      console.error("Presenter failed:", error);
+    }
+
     // Update trip status to active with sources and notices
     await supabase
       .from("trips")

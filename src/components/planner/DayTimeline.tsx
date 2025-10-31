@@ -104,16 +104,33 @@ export const DayTimeline = ({ day }: DayTimelineProps) => {
               </div>
 
               {item.place_data && (
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
-                  {item.place_data.rating && (
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{item.place_data.rating}</span>
-                    </div>
+                <div className="mt-3 space-y-2">
+                  {item.place_data.micro_copy && (
+                    <p className="text-sm font-medium text-primary">
+                      {item.place_data.micro_copy}
+                    </p>
                   )}
-                  {item.place_data.formatted_address && (
-                    <span className="truncate">{item.place_data.formatted_address}</span>
+                  {item.place_data.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {item.place_data.description}
+                    </p>
                   )}
+                  {item.place_data.tip && (
+                    <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded">
+                      💡 {item.place_data.tip}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    {item.place_data.rating && (
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span>{item.place_data.rating}</span>
+                      </div>
+                    )}
+                    {item.place_data.formatted_address && (
+                      <span className="truncate">{item.place_data.formatted_address}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
